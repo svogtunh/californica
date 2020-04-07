@@ -251,6 +251,14 @@ class SolrDocument
     self[:iiif_text_direction_ssi]
   end
 
+  def thumbnail_url
+    self[:thumbnail_url_ss]
+  end
+
+  def thumbnail_url_explicit
+    self[:thumbnail_url_explicit_ss]
+  end
+
   def iiif_viewing_hint
     self[:iiif_viewing_hint_ssi]
   end

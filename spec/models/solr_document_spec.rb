@@ -19,7 +19,9 @@ RSpec.describe SolrDocument do
       normalized_date_tesim: [''],
       repository_tesim: [''],
       rights_country_tesim: [''],
-      rights_holder_tesim: [''] }
+      rights_holder_tesim: [''],
+      thumbnail_url_ss: '',
+      thumbnail_url_explicit_ss: '' }
   end
 
   it 'has extent' do
@@ -68,6 +70,14 @@ RSpec.describe SolrDocument do
 
   it 'has rights_holder' do
     expect(solr_document.rights_holder).to eq([''])
+  end
+
+  it 'has thumbnail_url' do
+    expect(solr_document.thumbnail_url).to eq('')
+  end
+
+  it 'has thumbnail_url_explicit' do
+    expect(solr_document.thumbnail_url_explicit).to eq('')
   end
 
   describe '#iiif_manifest_url' do

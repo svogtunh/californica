@@ -149,6 +149,7 @@ class CatalogController < ApplicationController
     config.add_show_field solr_name('support', :stored_searchable)
     config.add_show_field solr_name('summary', :stored_searchable)
     config.add_show_field 'iiif_text_direction_ssi'
+    config.add_show_field 'thumbnail_url_explicit_ss'
     config.add_show_field solr_name('toc', :stored_searchable)
     config.add_show_field 'translator_tesim'
     config.add_show_field solr_name('uniform_title', :stored_searchable)

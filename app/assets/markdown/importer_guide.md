@@ -218,6 +218,8 @@ The URL of a IIIF resource that can be used to view the image. Should be automat
 
 ### IIIF Range
 
+### IIIF Manifest URL
+
 ### Name.illuminator
 accepts "Illuminator", "Name.illuminator"
 
@@ -299,6 +301,28 @@ Accepts "Summary", "Description.abstract"
 Accepts "Table of Contents" and "Description.tableOfContents" as valid synonyms.
 
 ### Tagline
+
+### Thumbnail URL
+
+URL for a thumbnail image. Sould be a complete IIIF presentation API URL (e.g.
+), and it should always end with the parameters `` to be sized correctly and
+to ensure that it is cached permanently as a thumbnail.
+
+If this header is not included in the CSV, then a thumbnail URL will be created
+and stored in this field. The following strategies will be used, in this order,
+until one succeeds:
+- IIIF parameters will be added to the record's "IIIF Access URL", if present
+- The import will search for ChildWork records in californica (included
+  the current import). If one of these is titled 'f001r', it will be used,
+  otherwise the first in the defined order will be used.
+- If no ChildWorks are found in californica, it will attempt to download a
+  IIIF manifest from the location specified in "IIIF Manifest URL", then
+  construct a thumbnail URL from either the canvas labelled 'f001r' or the
+  first canvas.
+
+If the csv includes the header "Thumbnail URL" but that column is left blank
+for a given record, none of these strategies will be used and the field will
+remain empty.
 
 ### Translator
 Accepts Name.translator as valid synonyms.

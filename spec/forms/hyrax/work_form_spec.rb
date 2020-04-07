@@ -58,6 +58,7 @@ RSpec.describe Hyrax::WorkForm do
       :summary,
       :support,
       :tagline,
+      :thumbnail_url_explicit,
       :toc,
       :translator,
       :iiif_text_direction,

@@ -52,11 +52,13 @@ module Hyrax
       :subject_temporal,
       :subject_topic,
       :tagline,
+      :thumbnail_url_explicit,
       :summary,
       :toc,
       :translator,
       :iiif_text_direction,
-      :uniform_title]
+      :uniform_title
+    ]
 
     self.required_fields = [:title, :ark]
 
@@ -129,6 +131,7 @@ module Hyrax
         :toc,
         :translator,
         :iiif_text_direction,
+        :thumbnail_url_explicit,
         :uniform_title,
         :collation,
         :composer,
@@ -139,7 +142,7 @@ module Hyrax
         :representative_image,
         :featured_image,
         :tagline,
-        :scribe,
+        :scribe
       ]
     end
   end

@@ -87,6 +87,7 @@ class CalifornicaMapper < Darlingtonia::HashMapper
     subject_geographic: "Subject geographic",
     subject_temporal: "Subject temporal",
     iiif_text_direction: "Text direction",
+    thumbnail_url_explicit: "Thumbnail URL",
     translator: ["Translator", "Name.translator"],
     title: "Title",
     toc: ["Table of Contents", "Description.tableOfContents"],
@@ -378,5 +379,9 @@ class CalifornicaMapper < Darlingtonia::HashMapper
     return unless ['ChildWork', 'Page'].include?(metadata["Object Type"])
     record_page_sequence
     [parent_work.id]
+  end
+
+  def thumbnail_url_explicit
+    metadata["Thumbnail URL"]
   end
 end

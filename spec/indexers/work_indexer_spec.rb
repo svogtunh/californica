@@ -306,41 +306,278 @@ RSpec.describe WorkIndexer do
     let(:attributes) do
       {
         ark: 'ark:/123/456',
-        access_copy: 'master/file/path.jpg'
+        access_copy: access_copy,
+        iiif_manifest_url: iiif_manifest_url,
+        thumbnail_url_explicit: thumbnail_url_explicit
       }
     end
-    let(:expected_url) { "#{ENV['IIIF_SERVER_URL']}master%2Ffile%2Fpath.jpg/full/!200,200/0/default.jpg" }
+    let(:access_copy) { nil }
+    let(:expected_url) { 'http://test.url/thumb.png' }
+    let(:iiif_manifest_url) { nil }
+    let(:thumbnail_url_explicit) { nil }
+
+    context 'when the work has thumbnail_url_explicit' do
+      let(:thumbnail_url_explicit) { expected_url }
+
+      it 'uses that URL' do
+        expect(solr_document['thumbnail_url_ss']).to eq expected_url
+      end
+    end
 
     context 'when the work has an image path' do
+      let(:access_copy) { 'http://test.url/thumb' }
+      let(:expected_url) { "http://test.url/thumb/full/!200,200/0/default.jpg" }
+
       it 'uses that image' do
         expect(solr_document['thumbnail_url_ss']).to eq expected_url
       end
     end
 
     context 'when the work has no image' do
-      let(:attributes) do
-        {
-          ark: 'ark:/123/456'
-        }
-      end
+      let(:child_work) { instance_double('ChildWork', ark: 'ark:/abc/xyz', thumbnail_url_explicit: expected_url) }
+      before { allow(work).to receive(:ordered_members).and_return([child_work]) }
 
       it 'asks the document\'s children' do
-        child_work = ChildWork.new(ark: 'ark:/abc/xyz', access_copy: 'master/file/path.jpg')
-        allow(work).to receive(:members).and_return([child_work])
         expect(solr_document['thumbnail_url_ss']).to eq expected_url
       end
     end
 
     context 'when the document has neither an image path nor children' do
-      let(:attributes) do
-        {
-          ark: 'ark:/123/456'
-        }
+      let(:expected_url) { 'https://iiif.library.ucla.edu/iiif/2/ark%3A%2F21198%2Fzz001dwdv2/full/!200,200/0/default.jpg' }
+      let(:iiif_manifest_url) { 'http://test.url/manifest' }
+      let(:manifest_response) do
+        instance_double('HTTParty::Response', code: 200, parsed_response: {
+                          "sequences" => [{
+                            "canvases" => [{
+                              "label" => "c99_Kemble_Biglow Papers_A2362.tif",
+                              "images" => [{
+                                "resource" => {
+                                  "service" => {
+                                    "@id" => "https://iiif.library.ucla.edu/iiif/2/ark%3A%2F21198%2Fzz001dwdv2"
+                                  }
+                                }
+                              }]
+                            }]
+                          }]
+                        })
       end
 
+      before do
+        allow(HTTParty).to receive(:get).with(iiif_manifest_url).and_return(manifest_response)
+      end
+
+      it 'queries the IIIF manifest' do
+        expect(solr_document['thumbnail_url_ss']).to eq expected_url
+      end
+    end
+
+    context 'when no thumbnail can be generated' do
       it 'returns nil' do
         expect(solr_document['thumbnail_url_ss']).to eq nil
       end
+    end
+  end
+
+  describe '#thumbnail_from_access_copy' do
+    let(:attributes) do
+      {
+        ark: 'ark:/123/456',
+        access_copy: access_copy,
+        thumbnail_url_explicit: nil
+      }
+    end
+
+    context 'when there is an access_copy' do
+      let(:access_copy) { 'http://test.url/image' }
+
+      it 'calls thumbnail_with_suffix with the access_copy' do
+        allow(indexer).to receive(:thumbnail_with_suffix).with(access_copy).and_return('bingo')
+        expect(indexer.thumbnail_from_access_copy).to eq 'bingo'
+      end
+    end
+
+    context 'when there isn\'t an access_copy' do
+      let(:access_copy) { nil }
+
+      it 'returns nil' do
+        expect(indexer.thumbnail_from_access_copy).to be_nil
+      end
+    end
+  end
+
+  describe '#thumbnail_from_child_works' do
+    let(:attributes) do
+      {
+        ark: 'ark:/123/456',
+        access_copy: nil,
+        thumbnail_url_explicit: nil
+      }
+    end
+    let(:child_with_thumbnail) { FactoryBot.build('child_work', thumbnail_url_explicit: 'thumb.png') }
+    let(:child_without_thumbnail) { FactoryBot.build('child_work', thumbnail_url_explicit: nil, access_copy: nil, ordered_members: []) }
+
+    context 'where there are no children' do
+      it 'returns nil' do
+        allow(work).to receive(:ordered_members).and_return([])
+        expect(indexer.thumbnail_from_child_works).to be_nil
+      end
+    end
+
+    context 'when the children do not have thumbnails' do
+      it 'returns nil' do
+        allow(work).to receive(:ordered_members).and_return([child_without_thumbnail])
+        expect(indexer.thumbnail_from_child_works).to be_nil
+      end
+    end
+
+    context 'when a child work has a thumbnail' do
+      it 'returns thumbnail from the first child that has one' do
+        allow(work).to receive(:ordered_members).and_return([child_without_thumbnail, child_with_thumbnail])
+        expect(indexer.thumbnail_from_child_works).to eq 'thumb.png'
+      end
+    end
+  end
+
+  describe '#thumbnail_from_manifest' do
+    let(:attributes) do
+      {
+        ark: 'ark:/123/456',
+        access_copy: nil,
+        iiif_manifest_url: iiif_manifest_url,
+        thumbnail_url_explicit: nil
+      }
+    end
+    let(:access_copy) { nil }
+    let(:iiif_manifest_url) { 'http://test.url/manifest' }
+
+    context 'when there is not IIIF manifest URL' do
+      let(:iiif_manifest_url) { nil }
+
+      it 'returns nil' do
+        expect(indexer.thumbnail_from_manifest).to be_nil
+      end
+    end
+
+    context 'when the call to the manifest service fails' do
+      let(:manifest_response) { instance_double('HTTParty::Response', code: 404) }
+
+      before { allow(HTTParty).to receive(:get).with(iiif_manifest_url).and_return(manifest_response) }
+
+      it 'returns nil' do
+        expect(indexer.thumbnail_from_manifest).to be_nil
+      end
+    end
+
+    context 'when the parsed manifest doesn\'t have the expected content' do
+      let(:manifest_response) do
+        instance_double('HTTParty::Response', code: 200, parsed_response: {
+                          "sequences" => [{
+                            "canvases" => [{
+                              "images" => [{
+                                "resource" => {
+                                  "service" => {
+                                    "@id" => "https://iiif.library.ucla.edu/iiif/2/ark%3A%2F21198%2Fzz001dwdv2"
+                                  }
+                                }
+                              }]
+                            }]
+                          }]
+                        })
+      end
+
+      before { allow(HTTParty).to receive(:get).with(iiif_manifest_url).and_return(manifest_response) }
+
+      it 'returns nil' do
+        expect(indexer.thumbnail_from_manifest).to be_nil
+      end
+    end
+
+    context 'when the manifest has an image titled "f. 001r"' do
+      let(:manifest_response) do
+        instance_double('HTTParty::Response', code: 200, parsed_response: {
+                          "sequences" => [{
+                            "canvases" => [
+                              {
+                                "label" => "abc",
+                                "images" => [{
+                                  "resource" => {
+                                    "service" => {
+                                      "@id" => "https://iiif.library.ucla.edu/iiif/2/ark%3A%2F21198%2Fzz001dwdv2"
+                                    }
+                                  }
+                                }]
+                              },
+                              {
+                                "label" => "f. 001r",
+                                "images" => [{
+                                  "resource" => {
+                                    "service" => {
+                                      "@id" => "target"
+                                    }
+                                  }
+                                }]
+                              }
+                            ]
+                          }]
+                        })
+      end
+
+      before { allow(HTTParty).to receive(:get).with(iiif_manifest_url).and_return(manifest_response) }
+
+      it 'uses that image' do
+        expect(indexer.thumbnail_from_manifest).to eq 'target/full/!200,200/0/default.jpg'
+      end
+    end
+
+    context 'when the manifest doesn\'t have "f.001r"' do
+      let(:manifest_response) do
+        instance_double('HTTParty::Response', code: 200, parsed_response: {
+                          "sequences" => [{
+                            "canvases" => [
+                              {
+                                "label" => "abc",
+                                "images" => [{
+                                  "resource" => {
+                                    "service" => {
+                                      "@id" => "target"
+                                    }
+                                  }
+                                }]
+                              },
+                              {
+                                "label" => "def",
+                                "images" => [{
+                                  "resource" => {
+                                    "service" => {
+                                      "@id" => "not.target"
+                                    }
+                                  }
+                                }]
+                              }
+                            ]
+                          }]
+                        })
+      end
+
+      before { allow(HTTParty).to receive(:get).with(iiif_manifest_url).and_return(manifest_response) }
+
+      it 'uses the first image in the manifest' do
+        expect(indexer.thumbnail_from_manifest).to eq 'target/full/!200,200/0/default.jpg'
+      end
+    end
+  end
+
+  describe '#thumbnail_with_suffix' do
+    let(:attributes) do
+      { ark: 'ark:/123/456' }
+    end
+
+    it 'adds the IIIF parameters to the url' do
+      expect(indexer.thumbnail_with_suffix('target')).to eq 'target/full/!200,200/0/default.jpg'
+    end
+
+    it 'returns nil if given a nil argument' do
+      expect(indexer.thumbnail_with_suffix(nil)).to be_nil
     end
   end
 end

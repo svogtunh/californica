@@ -70,6 +70,7 @@ module Hyrax
         :summary,
         :tagline,
         :iiif_text_direction,
+        :thumbnail_url_explicit,
         :translator,
         :toc,
         :total_items,

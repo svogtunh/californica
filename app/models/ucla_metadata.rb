@@ -215,6 +215,10 @@ module UclaMetadata
       index.as :stored_searchable, :facetable
     end
 
+    property :thumbnail_url_explicit, predicate: ::RDF::URI.intern('http://xmlns.com/foaf/spec/#term_thumbnail'), multiple: false do |index|
+      index.as :displayable
+    end
+
     property :iiif_text_direction, predicate: ::RDF::URI.intern('http://iiif.io/api/presentation/2#viewingDirection'), multiple: false do |index|
       index.as :stored_sortable
     end

@@ -8,7 +8,7 @@ RSpec.describe 'Edit an existing work', :clean, type: :system, js: true do
 
   let(:work_attrs) do
     {
-      access_copy: 'dlmasters/ethiopian/masters/abc123.tif',
+      access_copy: 'http://test.url/iiif/abc123',
       alternative_title: ['Alternative title'],
       architect: ['Old Architect'],
       ark: 'ark:/abc/3456',
@@ -93,7 +93,7 @@ RSpec.describe 'Edit an existing work', :clean, type: :system, js: true do
       expect(page.all(:css, 'div.select.work_rights_statement').first.has_content?('copyrighted')).to eq true
 
       click_on 'Additional fields'
-      expect(find_field('Access copy').value).to eq 'dlmasters/ethiopian/masters/abc123.tif'
+      expect(find_field('Access copy').value).to eq 'http://test.url/iiif/abc123'
       expect(find_field('Alternative title').value).to eq 'Alternative title'
       expect(find_field('Architect').value).to eq 'Old Architect'
       expect(find_field('Author').value).to eq 'Old Author'
@@ -156,6 +156,10 @@ RSpec.describe 'Edit an existing work', :clean, type: :system, js: true do
       fill_in 'Ark', with: 'ark:/not/myark' # This field is read-only and an attempt to change it should not result in a change
 
       # Submit the form.  When the page reloads, it should be on the show page.
+
+      # this seems to help the test pass, presumably for weird selenium reasons
+      page.execute_script "window.scrollBy(0,10000)"
+
       click_on 'Save changes'
       expect(page).to have_current_path(hyrax_work_path(work.id, locale: I18n.locale))
 

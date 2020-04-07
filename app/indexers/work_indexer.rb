@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 # Generated via
 #  `rails generate hyrax:work Work`
-class WorkIndexer < Hyrax::WorkIndexer
+class WorkIndexer < Hyrax::WorkIndexer # rubocop:disable Metrics/ClassLength
   # This indexes the default metadata. You can remove it if you want to
   # provide your own metadata and indexing.
   include Hyrax::IndexesBasicMetadata
@@ -76,6 +76,45 @@ class WorkIndexer < Hyrax::WorkIndexer
   end
 
   def thumbnail_url
+    object.thumbnail_url_explicit || thumbnail_from_access_copy || thumbnail_from_child_works || thumbnail_from_manifest || thumbnail_old_method
+  end
+
+  def thumbnail_from_access_copy
+    thumbnail_with_suffix(object.access_copy) if object.access_copy&.start_with?('http://', 'https://')
+
+    nil
+  end
+
+  def thumbnail_from_child_works
+    children = object.ordered_members.to_a
+    return nil if children.empty?
+    children.each do |child|
+      child_thumbnail = WorkIndexer.new(child).thumbnail_url
+      return child_thumbnail if child_thumbnail
+    end
+
+    nil
+  end
+
+  def thumbnail_from_manifest
+    return nil unless object.iiif_manifest_url
+    response = HTTParty.get(object.iiif_manifest_url)
+    return nil unless response.code == 200
+
+    label_image_pairs = response.parsed_response["sequences"][0]["canvases"].map do |canvas|
+      [canvas["label"], canvas["images"][0]["resource"]["service"]["@id"]]
+    end
+    valid_pairs = label_image_pairs.select { |label_and_url| !label_and_url.include?(nil) }
+    images_by_title = Hash[valid_pairs]
+
+    return nil if images_by_title.empty?
+    thumbnail_with_suffix(images_by_title['f. 001r'] || images_by_title.values.first)
+
+  rescue URI::InvalidURIError, NoMethodError
+    return nil
+  end
+
+  def thumbnail_old_method
     # this record has an image path attached
     iiif_url_base = Californica::ManifestBuilderService.new(curation_concern: object).iiif_url
     children = Array.wrap(object.members).clone
@@ -83,7 +122,9 @@ class WorkIndexer < Hyrax::WorkIndexer
       child = children.shift
       iiif_url_base = Californica::ManifestBuilderService.new(curation_concern: child).iiif_url
     end
+  end
 
+  def thumbnail_with_suffix(iiif_url_base)
     return nil unless iiif_url_base
     "#{iiif_url_base}/full/!200,200/0/default.jpg"
   end

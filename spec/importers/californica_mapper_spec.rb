@@ -191,6 +191,7 @@ RSpec.describe CalifornicaMapper do
         :subject_temporal,
         :summary,
         :support,
+        :thumbnail_url_explicit,
         :toc,
         :translator,
         :iiif_text_direction,
@@ -661,6 +662,16 @@ RSpec.describe CalifornicaMapper do
     context 'with different capitalization and whitespace' do
       let(:metadata) { { 'Visibility' => ' Public  ' } }
       it { is_expected.to eq public_vis }
+    end
+  end
+
+  describe '#thumbnail_url_explicit' do
+    let(:metadata) do
+      { "Thumbnail URL" => "http://test.url/thumb.png" }
+    end
+
+    it 'replaces them with a space' do
+      expect(mapper.thumbnail_url_explicit).to eq("http://test.url/thumb.png")
     end
   end
 end
